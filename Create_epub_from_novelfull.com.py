@@ -6,8 +6,8 @@ import re
 import pathlib
 
 # insert here chapters, which you want to parse
-start_chapter = 1001
-end_chapter = 1003
+start_chapter = 1
+end_chapter = 1498  # 1498 - final chapter for Release that Witch
 
 
 def get_html(url):
@@ -27,6 +27,8 @@ def get_page_data(html):
     # parse text to files
     soup = BeautifulSoup(html, 'lxml')
     chapter = soup.find('div', id='chapter-content')
+    global novel_name
+    novel_name = soup.find('a', class_='truyen-title').get('title')
     chapter_name = soup.find('a', class_='chapter-title').get('title')
     file_name = re.search(r'Chapter \d+', chapter_name).group(0)
     with open('.\\files_for_epub\\' + file_name + '.xhtml', "w", encoding='utf-8') as file:
@@ -52,9 +54,8 @@ def create_epub():
     # a bit of epub magic
     book = epub.EpubBook()
     book.set_identifier(f'{start_chapter}-{end_chapter}')
-    book.set_title(f'Release that Witch. Chapters {start_chapter}-{end_chapter}')
+    book.set_title(f'{novel_name}. Chapters {start_chapter}-{end_chapter}')
     book.set_language('en')
-
     book.spine = ['nav']
     for (dirpath, dirnames, filenames) in os.walk('.\\files_for_epub'):
         for filename in filenames:
@@ -67,11 +68,19 @@ def create_epub():
             book.add_item(c1)
             book.toc.append(c1)
             book.spine.append(c1)
-
     book.add_item(epub.EpubNcx())
     book.add_item(epub.EpubNav())
+    epub.write_epub(f'{novel_name}. Chapters {start_chapter}-{end_chapter}.epub', book, {})
 
-    epub.write_epub(f'Release that Witch. Chapters {start_chapter}-{end_chapter}.epub', book, {})
+
+def delete_temporary_folder():
+    dir = pathlib.Path('.\\files_for_epub')
+    for item in dir.iterdir():
+        if item.is_dir():
+            pathlib.Path.rmdir(item)
+        else:
+            item.unlink()
+    dir.rmdir()
 
 
 def main():
@@ -86,8 +95,8 @@ def main():
         html = get_html(url_gen)
         get_page_data(html)
     edit_files()
-
     create_epub()
+    delete_temporary_folder()
 
 
 if __name__ == '__main__':
